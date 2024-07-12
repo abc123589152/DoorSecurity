@@ -54,7 +54,7 @@ def set_value_with_timeout(request, line, value, timeout):
 def read_from_port(port, request):
     global CheckPermition
     try:
-        ser = serial.Serial(port, baudrate=115200, timeout=1)
+        ser = serial.Serial(port, baudrate=9600, timeout=1)
         print(f"Listening on {port} ({device_ids[port]})...")
         while True:
             if ser.in_waiting > 0:
