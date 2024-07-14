@@ -1,8 +1,8 @@
 import mysql.connector as mysql
-def dbConnect(sqlCommand,params1):
+def dbConnect(sqlCommand,params1,hostip):
     ConnectDBlist = []
     db = mysql.connect(
-    host = "192.168.1.186",
+    host = hostip,
     user = "root",
     passwd = "1qaz@WSX",
     database = "DoorSecurity",
