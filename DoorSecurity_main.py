@@ -6,6 +6,7 @@ from gpiod.line import Direction, Value
 import gpiod
 import gpiozero
 import db_model.dbConnection as db
+from db_model.dbConnection_new import dbConnect
 # Arduino AMA port
 CheckPermition = False
 #???????
