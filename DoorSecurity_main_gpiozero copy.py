@@ -20,7 +20,7 @@ check_uart4_pin = []
 doorsensor = gpiozero.Button(24)
 ipadd = os.popen("ip -br add | grep eth0 | awk '{print $3}' | cut -d '/' -f1")
 onlyipaddress = ipadd.read().strip()
-relay_uart1_noconvert = db.dbConnect("select door_lock from doors where weigand = %s and control = %s", ('uart1',onlyipaddress,), onlyipaddress)[0][0]
+relay_uart1_noconvert = db.dbConnect("select door_lock from doorsetting where weigand = %s and control = %s", ('uart1',onlyipaddress,), onlyipaddress)[0][0]
 if type(relay_uart1_noconvert) is not type(None) and relay_uart1_noconvert!='': 
     relay_uart1_pin = int(relay_uart1_noconvert)
     relay_uart1 = gpiozero.LED(relay_uart1_pin) 
@@ -29,7 +29,7 @@ else:
     relay_uart1_pin = relay_uart1_noconvert
     check_uart1_pin.append(relay_uart1_pin)
 
-relay_uart2_noconvert = db.dbConnect("select door_lock from doors where weigand = %s and control = %s", ('uart2',onlyipaddress,), onlyipaddress)[0][0]
+relay_uart2_noconvert = db.dbConnect("select door_lock from doorsetting where weigand = %s and control = %s", ('uart2',onlyipaddress,), onlyipaddress)[0][0]
 if type(relay_uart2_noconvert) is not type(None) and relay_uart2_noconvert!='': 
     relay_uart2_pin = int(relay_uart2_noconvert)
     relay_uart2 = gpiozero.LED(relay_uart2_pin) 
@@ -38,7 +38,7 @@ else:
     relay_uart1_pin = relay_uart1_noconvert
     check_uart1_pin.append(relay_uart1_pin)
 
-relay_uart3_noconvert = db.dbConnect("select door_lock from doors where weigand = %s and control = %s", ('uart3',onlyipaddress,), onlyipaddress)[0][0]
+relay_uart3_noconvert = db.dbConnect("select door_lock from doorsetting where weigand = %s and control = %s", ('uart3',onlyipaddress,), onlyipaddress)[0][0]
 if type(relay_uart3_noconvert) is not type(None) and relay_uart3_noconvert!='': 
     relay_uart3_pin = int(relay_uart3_noconvert)
     relay_uart3 = gpiozero.LED(relay_uart3_pin) 
@@ -47,7 +47,7 @@ else:
     relay_uart3_pin = relay_uart3_noconvert
     check_uart3_pin.append(relay_uart3_pin)
 
-relay_uart4_noconvert = db.dbConnect("select door_lock from doors where weigand = %s and control = %s", ('uart4',onlyipaddress,), onlyipaddress)
+relay_uart4_noconvert = db.dbConnect("select door_lock from doorsetting where weigand = %s and control = %s", ('uart4',onlyipaddress,), onlyipaddress)
 print(relay_uart4_noconvert)
 if relay_uart4_noconvert!=[]:
     relay_uart4_noconvert = relay_uart4_noconvert[0][0]
@@ -73,7 +73,7 @@ def reset_timer(uartport,controlip):
     # ����?�e??��?�{
     stop_event.set()
     stop_event = threading.Event()
-    resettime = db.dbConnect("select reset_time where control = %s and weigand = %s",(controlip,uartport,))
+    resettime = db.dbConnect("select reset_time from doorsetting where control = %s and weigand = %s",(controlip,uartport,))
     if type(resettime) is not type(None) and resettime!='':
             resettime = int(resettime[0][0])
     else:
@@ -175,10 +175,10 @@ def read_from_port(port,weigand_uart):
             ipadd = os.popen("ip -br add | grep eth0 | awk '{print $3}' | cut -d '/' -f1")
             onlyipaddress = ipadd.read().strip()
             #get the uart define door name 
-            doorName = db.dbConnect("select door from doors where weigand = %s and control = %s" ,(weigand_uart,onlyipaddress,),onlyipaddress)
+            doorName = db.dbConnect("select door from doorsetting where weigand = %s and control = %s" ,(weigand_uart,onlyipaddress,),onlyipaddress)
             if doorName:
                 if ser.in_waiting > 0:
-                    door_lock = db.dbConnect("select door_lock from doors where weigand = %s and control = %s", (weigand_uart, onlyipaddress,), onlyipaddress)
+                    door_lock = db.dbConnect("select door_lock from doorsetting where weigand = %s and control = %s", (weigand_uart, onlyipaddress,), onlyipaddress)
                     print(door_lock)
                     print(weigand_uart)
                     data = ser.readline().decode('utf-8').strip()
@@ -189,10 +189,10 @@ def read_from_port(port,weigand_uart):
                             allDoorname.append(db.dbConnect("select doorname from doorgroup where groupname = %s",(findcardgroup[i][0],),onlyipaddress))#all permit door append to list
                         door_list = [item for sublist in allDoorname for item in sublist]
                         door_everyone_list = [item[0] for item in door_list]#Convert a multidimensional array into a one-dimensional array
-                        if doorName[0][0] in door_everyone_list:
+                        if doorName[0][0] in 'D532':
                             if weigand_uart == 'uart2':
                                 if not type(relay_uart2_pin) is type(None):
-                                    relay_uart2_pin = int(db.dbConnect("select door_lock from doors where weigand = %s and control = %s", ('uart2', onlyipaddress,), onlyipaddress)[0][0])
+                                    relay_uart2_pin = int(db.dbConnect("select door_lock from doorsetting where weigand = %s and control = %s", ('uart2', onlyipaddress,), onlyipaddress)[0][0])
                                     print("uart2 inside........")
                                     print(relay_uart2_pin)
                                     print(check_uart2_pin[0])
@@ -210,7 +210,7 @@ def read_from_port(port,weigand_uart):
                                         reset_timer('uart2')
                                     #set_value_with_timeout(request, int(door_lock[0][0]), Value.ACTIVE, 5)#open the door to put GPIO 23(LINE is 23) Active
                             elif weigand_uart == 'uart1':
-                                 relay_uart1_pin = db.dbConnect("select door_lock from doors where weigand = %s and control = %s", ('uart1', onlyipaddress,), onlyipaddress)[0][0]
+                                 relay_uart1_pin = db.dbConnect("select door_lock from doorsetting where weigand = %s and control = %s", ('uart1', onlyipaddress,), onlyipaddress)[0][0]
                                  if not type(relay_uart1_pin) is type(None) and relay_uart1_pin!='':
                                     print("uart1 inside........")
                                     print(relay_uart1_pin)
@@ -229,7 +229,7 @@ def read_from_port(port,weigand_uart):
                                         relay_uart1.on()
                                         reset_timer('uart1')
                             elif weigand_uart == 'uart3':
-                                relay_uart3_pin = db.dbConnect("select door_lock from doors where weigand = %s and control = %s", ('uart3', onlyipaddress,), onlyipaddress)
+                                relay_uart3_pin = db.dbConnect("select door_lock from doorsetting where weigand = %s and control = %s", ('uart3', onlyipaddress,), onlyipaddress)
                                 if relay_uart3_pin !=[]:
                                     relay_uart3_pin = relay_uart3_pin[0][0]
                                     if not type(relay_uart3_pin) is type(None) and relay_uart3_pin !='':
@@ -251,7 +251,7 @@ def read_from_port(port,weigand_uart):
                                             reset_timer('uart3')
                                             check_uart3_pin[0] = relay_uart3_pin
                             elif weigand_uart == 'uart4':
-                                relay_uart4_pin = db.dbConnect("select door_lock from doors where weigand = %s and control = %s", ('uart4', onlyipaddress,), onlyipaddress)
+                                relay_uart4_pin = db.dbConnect("select door_lock from doorsetting where weigand = %s and control = %s", ('uart4', onlyipaddress,), onlyipaddress)
                                 if relay_uart4_pin !=[]:
                                     relay_uart4_pin = relay_uart4_pin[0][0]
                                     print(f"inside ={relay_uart4_pin}")

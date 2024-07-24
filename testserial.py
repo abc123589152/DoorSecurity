@@ -9,8 +9,10 @@ try:
             print("Received: " + line)
             if line == '2291941972':
                 ser.write(b'1')
+                print("1")
             else:
                 ser.write(b'0')
+                print("0")
 except KeyboardInterrupt:
     print("Exiting...")
 finally:

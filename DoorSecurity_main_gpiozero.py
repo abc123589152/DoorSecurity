@@ -22,12 +22,16 @@ check_uart1_pin = []
 check_uart2_pin = []
 check_uart3_pin = []
 check_uart4_pin = []
+check_uart1_redLed_pin = []
+check_uart2_redLed_pin = []
+check_uart3_redLed_pin = []
+check_uart4_redLed_pin = []
 doorsensor = gpiozero.Button(24)
 ipadd = os.popen("ip -br add | grep eth0 | awk '{print $3}' | cut -d '/' -f1")
 onlyipaddress = ipadd.read().strip()
-relay_uart1_noconvert = db.dbConnect("select door_lock from doorsetting where weigand = %s and control = %s", ('uart1',onlyipaddress,), onlyipaddress)
+relay_uart1_noconvert = db.dbConnect("select door_lock from doorsetting where weigand = %s and control = %s", ('uart1',onlyipaddress,), onlyipaddress)[0][0]
 if type(relay_uart1_noconvert) is not type(None) and relay_uart1_noconvert!='': 
-    relay_uart1_pin = int(relay_uart1_noconvert[0][0])
+    relay_uart1_pin = int(relay_uart1_noconvert)
     relay_uart1 = gpiozero.LED(relay_uart1_pin) 
     check_uart1_pin.append(relay_uart1_pin)
 else:
@@ -35,16 +39,16 @@ else:
     check_uart1_pin.append(relay_uart1_pin)
 
 relay_uart2_noconvert = db.dbConnect("select door_lock from doorsetting where weigand = %s and control = %s", ('uart2',onlyipaddress,), onlyipaddress)
-if type(relay_uart2_noconvert) is not type(None) and relay_uart2_noconvert!='': 
+if (relay_uart2_noconvert[0][0]!=''): 
     relay_uart2_pin = int(relay_uart2_noconvert[0][0])
     relay_uart2 = gpiozero.LED(relay_uart2_pin) 
     check_uart2_pin.append(relay_uart2_pin)
 else:
     relay_uart1_pin = relay_uart1_noconvert
-    check_uart1_pin.append(relay_uart1_pin)
+    check_uart1_pin.append(relay_uart2_pin)
 
 relay_uart3_noconvert = db.dbConnect("select door_lock from doorsetting where weigand = %s and control = %s", ('uart3',onlyipaddress,), onlyipaddress)
-if type(relay_uart3_noconvert) is not type(None) and relay_uart3_noconvert!='': 
+if (relay_uart3_noconvert[0][0]!=''): 
     relay_uart3_pin = int(relay_uart3_noconvert[0][0])
     relay_uart3 = gpiozero.LED(relay_uart3_pin) 
     check_uart3_pin.append(relay_uart3_pin)
@@ -53,13 +57,13 @@ else:
     check_uart3_pin.append(relay_uart3_pin)
 
 relay_uart4_noconvert = db.dbConnect("select door_lock from doorsetting where weigand = %s and control = %s", ('uart4',onlyipaddress,), onlyipaddress)
-if type(relay_uart4_noconvert) is not type(None) and relay_uart4_noconvert!='': 
+if (relay_uart4_noconvert[0][0]!=''): 
     relay_uart4_pin = int(relay_uart4_noconvert[0][0])
     relay_uart4 = gpiozero.LED(relay_uart4_pin) 
     check_uart4_pin.append(relay_uart4_pin)
 else:
     relay_uart4_pin = relay_uart4_noconvert
-check_uart4_pin.append(relay_uart4_pin)
+    check_uart4_pin.append(relay_uart4_pin)
 # open door pin
 #LINE = 25 
 #Input check door status is permition open or force open
@@ -99,19 +103,23 @@ def timer_thread(stop_event,uartport,resettime):
         time.sleep(0.1)
     if uartport == 'uart2':
         relay_uart2.off()
+        redLedpin_method(27).off()
         print("Relay deactivated")
     elif uartport =='uart1':
         relay_uart1.off()
+        redLedpin_method(17).off()
         print("Relay deactivated")
     elif uartport =='uart3':
         relay_uart3.off()
+        redLedpin_method(20).off()
         print("Relay deactivated")
     elif uartport =='uart4':
         relay_uart4.off()
+        redLedpin_method(21).off()
         print("Relay deactivated")
     
 
-# ??��srelay?�H��GPIO��?
+# update relay pin and close old pin number
 def update_relay_pin(new_pin, uartport):
     try:
         if uartport == 'uart2':
@@ -136,8 +144,35 @@ def update_relay_pin(new_pin, uartport):
                 relay_uart4 = gpiozero.LED(new_pin)  # Initialize the new relay object
     except event as e:
         print(f"gpio pin has error,please check error event:{event}")
-
-
+#select first time to get uart redLed pin number
+def selectFirstRedLed(uartnumber,hostip):
+    global check_uart1_redLed_pin
+    global check_uart2_redLed_pin
+    global check_uart3_redLed_pin
+    global check_uart4_redLed_pin
+    redLed_uart_noconvert = db.dbConnect("select door_lock from doorsetting where weigand = %s and control = %s", (uartnumber,hostip,), hostip)
+    if type(redLed_uart_noconvert) is not type(None) and redLed_uart_noconvert!='':
+        if (uartnumber == 'uart1'):
+            redLed_pin = int(redLed_uart_noconvert[0][0])
+            check_uart1_redLed_pin.append(redLed_pin)
+            redLed_pin = gpiozero.LED(redLed_pin)
+            return redLed_pin
+        elif (uartnumber == 'uart2'):
+            redLed_pin = int(redLed_uart_noconvert[0][0])
+            check_uart2_redLed_pin.append(redLed_pin)
+            redLed_pin = gpiozero.LED(redLed_pin)
+            return redLed_pin
+        elif (uartnumber == 'uart3'):
+            redLed_pin = int(redLed_uart_noconvert[0][0])
+            check_uart3_redLed_pin.append(redLed_pin)
+            redLed_pin = gpiozero.LED(redLed_pin)
+            return redLed_pin
+        elif (uartnumber == 'uart4'):
+            redLed_pin = int(redLed_uart_noconvert[0][0])
+            check_uart4_redLed_pin.append(redLed_pin)
+            redLed_pin = gpiozero.LED(redLed_pin)
+            return redLed_pin
+    
 # def set_value_with_timeout(request, line, value, timeout):
 #     #GPIO timeout to reset
 #     def reset_value(stop_flag):
@@ -177,6 +212,7 @@ def read_from_port(port,weigand_uart):
         while True:
             try:
                 allDoorname=[]
+                global relay_uart1
                 data = ''
                 #Get raspberry pi ip address
                 ipadd = os.popen("ip -br add | grep eth0 | awk '{print $3}' | cut -d '/' -f1")
@@ -197,29 +233,34 @@ def read_from_port(port,weigand_uart):
                             print(e)
                         if data:
                             find_card_group = ""
+                            
                             try:
                                 print(f"cardnumber:{data}")
                                 #find card number to permit groupname
                                 findcardgroup = dbConnect("select doorgroup from employ where cardnumber =%s",(data,),onlyipaddress)
+                                username = db.dbConnect("select username from employ where cardnumber = %s",(data,),onlyipaddress)[0][0]
                                 print(findcardgroup)
-                                for findcard_group in findcardgroup[0]:
-                                    find_card_group = findcard_group.split(',')
-                                #use groupname to find in the group doors name
-                                for get_doorgroup_name in find_card_group:
-                                    find_every_door = dbConnect("select doorname from doorgroup where groupname = %s",(get_doorgroup_name,),onlyipaddress)
-                                    for getalldoor in find_every_door[0]:
-                                        for every_door in getalldoor.split(','):
-                                            allDoorname.append(every_door)
+                                if findcardgroup !='' or findcardgroup!=[]:
+                                    for findcard_group in findcardgroup[0]:
+                                        find_card_group = findcard_group.split(',')
+                                    #use groupname to find in the group doors name
+                                    for get_doorgroup_name in find_card_group:
+                                        find_every_door = dbConnect("select doorname from doorgroup where groupname = %s",(get_doorgroup_name,),onlyipaddress)
+                                        if find_every_door != []:
+                                            for getalldoor in find_every_door[0]:
+                                                for every_door in getalldoor.split(','):
+                                                    allDoorname.append(every_door)
                                 #find all doorgroup perrmit doorr number
+                                print(allDoorname)
                                 if doorName[0][0] in allDoorname:
                                     if weigand_uart == 'uart2':
-                                        if not type(relay_uart2_pin) is type(None):
-                                            relay_uart2_pin = int(db.dbConnect("select door_lock from doorsetting where weigand = %s and control = %s", ('uart2', onlyipaddress,), onlyipaddress)[0][0])
-                                            print("uart2 inside........")
+                                        relay_uart2_pin = db.dbConnect("select door_lock from doorsetting where weigand = %s and control = %s", ('uart2', onlyipaddress,), onlyipaddress)[0][0]
+                                        if (relay_uart2_pin!=''):   
                                             print(relay_uart2_pin)
                                             print(check_uart2_pin[0])
                                             if relay_uart2_pin == check_uart2_pin[0]:
                                                 print(f"{doorName[0][0]} Access granted")
+                                                dbConnect_query("insert into doorLog(username,cardnumber,doorName,doorStatus,authorization,swipeTime)values(%s,%s,%s,%s,%s,%s)",(username,data,doorName[0][0],doorstatus[0][0],'Pemit',get_now_date_time()),onlyipaddress)
                                                 CheckPermition = True
                                                 relay_uart2.on()
                                                 reset_timer('uart2',onlyipaddress)
@@ -228,19 +269,20 @@ def read_from_port(port,weigand_uart):
                                                 update_relay_pin(relay_uart2_pin,'uart2')
                                                 CheckPermition = True
                                                 print(f"{doorName[0][0]} Access granted")
+                                                dbConnect_query("insert into doorLog(username,cardnumber,doorName,doorStatus,authorization,swipeTime)values(%s,%s,%s,%s,%s,%s)",(username,data,doorName[0][0],doorstatus[0][0],'Pemit',get_now_date_time()),onlyipaddress)
                                                 relay_uart2.on()
                                                 reset_timer('uart2',onlyipaddress)
                                             #set_value_with_timeout(request, int(door_lock[0][0]), Value.ACTIVE, 5)#open the door to put GPIO 23(LINE is 23) Active
                                     elif weigand_uart == 'uart1':
                                         relay_uart1_pin = db.dbConnect("select door_lock from doorsetting where weigand = %s and control = %s", ('uart1', onlyipaddress,), onlyipaddress)[0][0]
-                                        if not type(relay_uart1_pin) is type(None) and relay_uart1_pin!='':
+                                        if (relay_uart1_pin!=''):
                                             print("uart1 inside........")
                                             print(relay_uart1_pin)
                                             print(check_uart1_pin[0])
-                                            relay_uart1_pin = int(relay_uart1_pin)
+                                            relay_uart1_pin = int(relay_uart1_pin[0][0])
                                             if relay_uart1_pin == check_uart1_pin[0]:
                                                 print(f"{doorName[0][0]} Access granted")
-                                                insertauthorization = dbConnect_query("insert into doorLog(doorName,doorStatus,authorization,swipeTime)values(%s,%s,%s,%s)",(doorName[0][0],doorstatus[0][0],'Pemit',get_now_date_time()))
+                                                dbConnect_query("insert into doorLog(username,cardnumber,doorName,doorStatus,authorization,swipeTime)values(%s,%s,%s,%s,%s,%s)",(username,data,doorName[0][0],doorstatus[0][0],'Pemit',get_now_date_time()),onlyipaddress)
                                                 CheckPermition = True
                                                 relay_uart1.on()
                                                 reset_timer('uart1',onlyipaddress)
@@ -249,60 +291,74 @@ def read_from_port(port,weigand_uart):
                                                 update_relay_pin(relay_uart1_pin,'uart1')
                                                 CheckPermition = True
                                                 print(f"{doorName[0][0]} Access granted")
-                                                insertauthorization = dbConnect_query("insert into doorLog(doorName,doorStatus,authorization,swipeTime)values(%s,%s,%s,%s)",(doorName[0][0],doorstatus[0][0],'Pemit',get_now_date_time()))
+                                                dbConnect_query("insert into doorLog(username,cardnumber,doorName,doorStatus,authorization,swipeTime)values(%s,%s,%s,%s,%s,%s)",(username,data,doorName[0][0],doorstatus[0][0],'Pemit',get_now_date_time()),onlyipaddress)
                                                 relay_uart1.on()
                                                 reset_timer('uart1',onlyipaddress)
                                     elif weigand_uart == 'uart3':
-                                        relay_uart3_pin = db.dbConnect("select door_lock from doorsetting where weigand = %s and control = %s", ('uart3', onlyipaddress,), onlyipaddress)
-                                        if relay_uart3_pin !=[]:
-                                            relay_uart3_pin = relay_uart3_pin[0][0]
-                                            if not type(relay_uart3_pin) is type(None) and relay_uart3_pin !='':
-                                                print("uart3 inside........")
-                                                print(relay_uart3_pin)
-                                                print(check_uart3_pin[0])
-                                                relay_uart3_pin = int(relay_uart3_pin)
-                                                if relay_uart3_pin == check_uart3_pin[0]:
-                                                    print(f"{doorName[0][0]} Access granted")
-                                                    CheckPermition = True
-                                                    relay_uart3.on()
-                                                    reset_timer('uart3',onlyipaddress)
-                                                else:
-                                                    if check_uart3_pin[0] !='':
-                                                        update_relay_pin(relay_uart3_pin,'uart3')
-                                                    CheckPermition = True
-                                                    print(f"{doorName[0][0]} Access granted")
-                                                    relay_uart3.on()
-                                                    reset_timer('uart3',onlyipaddress)
-                                                    check_uart3_pin[0] = relay_uart3_pin
+                                        relay_uart3_pin = db.dbConnect("select door_lock from doorsetting where weigand = %s and control = %s", ('uart3', onlyipaddress,), onlyipaddress)[0][0]
+                                        if (relay_uart3_pin !=''):
+                                            print("uart3 inside........")
+                                            print(relay_uart3_pin)
+                                            print(check_uart3_pin[0])
+                                            relay_uart3_pin = int(relay_uart3_pin)
+                                            if relay_uart3_pin == check_uart3_pin[0]:
+                                                print(f"{doorName[0][0]} Access granted")
+                                                dbConnect_query("insert into doorLog(username,cardnumber,doorName,doorStatus,authorization,swipeTime)values(%s,%s,%s,%s,%s,%s)",(username,data,doorName[0][0],doorstatus[0][0],'Pemit',get_now_date_time()),onlyipaddress)
+                                                CheckPermition = True
+                                                relay_uart3.on()
+                                                reset_timer('uart3',onlyipaddress)
+                                            else:
+                                                if check_uart3_pin[0] !='':
+                                                    update_relay_pin(relay_uart3_pin,'uart3')
+                                                CheckPermition = True
+                                                print(f"{doorName[0][0]} Access granted")
+                                                dbConnect_query("insert into doorLog(username,cardnumber,doorName,doorStatus,authorization,swipeTime)values(%s,%s,%s,%s,%s,%s)",(username,data,doorName[0][0],doorstatus[0][0],'Pemit',get_now_date_time()),onlyipaddress)
+                                                relay_uart3.on()
+                                                reset_timer('uart3',onlyipaddress)
+                                                check_uart3_pin[0] = relay_uart3_pin
                                     elif weigand_uart == 'uart4':
-                                        relay_uart4_pin = db.dbConnect("select door_lock from doorsetting where weigand = %s and control = %s", ('uart4', onlyipaddress,), onlyipaddress)
-                                        if relay_uart4_pin !=[]:
-                                            relay_uart4_pin = relay_uart4_pin[0][0]
-                                            print(f"inside ={relay_uart4_pin}")
-                                            if not type(relay_uart4_pin) is type(None) and relay_uart4_pin !='':
-                                                print("uart4 inside........")
-                                                print(relay_uart4_pin)
-                                                print(check_uart4_pin[0])
-                                                relay_uart4_pin = int(relay_uart4_pin)
-                                                #alter relay_uart4 port 
-                                                if relay_uart4_pin == check_uart4_pin[0]:
-                                                    print(f"{doorName[0][0]} Access granted")
-                                                    CheckPermition = True
-                                                    relay_uart4.on()
-                                                    reset_timer('uart4',onlyipaddress)
-                                                else:
-                                                    check_uart4_pin[0] = relay_uart4_pin
-                                                    update_relay_pin(relay_uart4_pin,'uart4')
-                                                    CheckPermition = True
-                                                    print(f"{doorName[0][0]} Access granted")
-                                                    relay_uart4.on()
-                                                    reset_timer('uart4',onlyipaddress)
-                                else:
-                                    with lock:
-                                        #print(door_lock[0][0]) 
-                                        print(f"{doorName[0][0]} Access Deny!") 
+                                        relay_uart4_pin = db.dbConnect("select door_lock from doorsetting where weigand = %s and control = %s", ('uart4', onlyipaddress,), onlyipaddress)[0][0]
+                                        print(f"inside ={relay_uart4_pin}")
+                                        if (relay_uart4_pin !=''):
+                                            print("uart4 inside........")
+                                            print(relay_uart4_pin)
+                                            print(check_uart4_pin[0])
+                                            relay_uart4_pin = int(relay_uart4_pin)
+                                            #alter relay_uart4 port 
+                                            if relay_uart4_pin == check_uart4_pin[0]:
+                                                print(f"{doorName[0][0]} Access granted")
+                                                dbConnect_query("insert into doorLog(username,cardnumber,doorName,doorStatus,authorization,swipeTime)values(%s,%s,%s,%s,%s,%s)",(username,data,doorName[0][0],doorstatus[0][0],'Pemit',get_now_date_time()),onlyipaddress)
+                                                CheckPermition = True
+                                                relay_uart4.on()
+                                                reset_timer('uart4',onlyipaddress)
+                                            else:
+                                                check_uart4_pin[0] = relay_uart4_pin
+                                                update_relay_pin(relay_uart4_pin,'uart4')
+                                                CheckPermition = True
+                                                print(f"{doorName[0][0]} Access granted")
+                                                dbConnect_query("insert into doorLog(username,cardnumber,doorName,doorStatus,authorization,swipeTime)values(%s,%s,%s,%s,%s,%s)",(username,data,doorName[0][0],doorstatus[0][0],'Pemit',get_now_date_time()),onlyipaddress)
+                                                relay_uart4.on()
+                                                reset_timer('uart4',onlyipaddress)
+                                else: 
+                                    print(f"{doorName[0][0]} Access Deny!")
+                                    dbConnect_query("insert into doorLog(username,cardnumber,doorName,doorStatus,authorization,swipeTime)values(%s,%s,%s,%s,%s,%s)",(username,data,doorName[0][0],doorstatus[0][0],'Deny',get_now_date_time()),onlyipaddress)
+                                    if (weigand_uart == 'uart1'):
+                                        redLedpin_method(17).on()
+                                        reset_timer('uart1',onlyipaddress)
+                                    elif (weigand_uart == 'uart2'):
+                                        redLedpin_method(27).on()
+                                        reset_timer('uart2',onlyipaddress)
+                                    elif (weigand_uart == 'uart3'):
+                                        redLedpin_method(20).on()
+                                        reset_timer('uart3',onlyipaddress)
+                                    elif (weigand_uart == 'uart4'):
+                                        redLedpin_method(21).on()
+                                        reset_timer('uart4',onlyipaddress)
+                                    
                             except Error as e:
                                 print(f"data base has error: {e}")
+                            except TypeError as etype:
+                                print(f"Type error please check error message:{etype}")
             except OSError as e:
                 print(e)   
     except (OSError, serial.SerialException) as e:
@@ -325,6 +381,10 @@ def checkdoorstatus(input_sensor):
                     time.sleep(1)
                 else:
                     print("Force Open")
+def redLedpin_method(pin):
+    redLedPin = gpiozero.LED(pin)
+    return redLedPin
+
 def main():
         #card reader to use uart port 1-4
         try:
