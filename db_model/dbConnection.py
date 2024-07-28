@@ -3,9 +3,9 @@ def dbConnect(sqlCommand,params1,hostip):
     ConnectDBlist = []
     db = mysql.connect(
     host = hostip,
-    user = "root",
-    passwd = "1qaz@WSX",
-    database = "DoorSecurity",
+    user = "your mysql username",
+    passwd = "mysql password",
+    database = "DoorSecurity",#DataBase Name
     port = "13306"
     )
     ConnectDB = db.cursor()
