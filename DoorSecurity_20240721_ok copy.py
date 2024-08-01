@@ -24,16 +24,18 @@ relay_uart1 = ''
 relay_uart2 = ''
 relay_uart3 = ''
 relay_uart4 = ''
-doorsensor = gpiozero.Button(24)
+reedswitch_uart1 = ''
+reedswitch_uart2 = ''
+reedswitch_uart3 = ''
+reedswitch_uart4 = ''
+#doorsensor = gpiozero.Button(24)
 #Setting red led pins
 #redLed_uart1 = gpiozero.LED(17)
 #redLed_uart2 = gpiozero.LED(27)
 #redLed_uart3 = gpiozero.LED(20)
 #redLed_uart4 = gpiozero.LED(21)
-#ipadd = os.popen("ip -br add | grep eth0 | awk '{print $3}' | cut -d '/' -f1")
-#onlyipaddress = ipadd.read().strip()
-with open('controlip','r') as re:
-    onlyipaddress = re.read().strip()
+ipadd = os.popen("ip -br add | grep eth0 | awk '{print $3}' | cut -d '/' -f1")
+onlyipaddress = ipadd.read().strip()
 relay_uart1_noconvert = db.dbConnect("select door_lock from doorsetting where wiegand = %s and control = %s", ('uart1',onlyipaddress,), onlyipaddress)
 #Get first time door lock relay pin by uart1
 if type(relay_uart1_noconvert) is not type(None) and relay_uart1_noconvert!='' and relay_uart1_noconvert!=[]: 
@@ -63,7 +65,7 @@ else:
     check_uart3_pin.append(relay_uart3_pin)
 #Get first time door lock relay pin by uart4
 relay_uart4_noconvert = db.dbConnect("select door_lock from doorsetting where wiegand = %s and control = %s", ('uart4',onlyipaddress,), onlyipaddress)
-if type(relay_uart4_noconvert) is not type(None) and relay_uart4_noconvert!='' and relay_uart3_noconvert!=[]: 
+if type(relay_uart4_noconvert) is not type(None) and relay_uart4_noconvert!='' and relay_uart4_noconvert!=[]: 
     relay_uart4_pin = int(relay_uart4_noconvert[0][0])
     relay_uart4 = gpiozero.LED(relay_uart4_pin) 
     check_uart4_pin.append(relay_uart4_pin)
@@ -76,10 +78,16 @@ check_uart4_pin.append(relay_uart4_pin)
 # record every port time flags and stop flags
 timers = {}
 stop_flags = {}
-
+reedswitch_check_change= []
 lock = threading.Lock()
 stop_event =threading.Event()
 #setting threading to put resest time to timer_thread function
+def door_statue(uartport,controlip):
+    reedswitch_noconvert = db.dbConnect("select door_sensor from doorsetting where wiegand = %s and control = %s", (uartport,controlip,), controlip)
+    if type(reedswitch_noconvert) is not type(None) and reedswitch_noconvert!='' and reedswitch_noconvert!=[]:
+        reedswitch_pin = int(reedswitch_noconvert[0][0])
+        reedswitch_uart_pin = gpiozero.LED(reedswitch_pin)
+    return reedswitch_uart_pin
 def reset_timer(uartport,controlip):
     global stop_event
     #select database to setting reset_time
@@ -103,6 +111,7 @@ def reset_timer(uartport,controlip):
 #time to Return door doo lock
 def timer_thread(stop_event,uartport,resettime):
     start_time = time.time()
+    global CheckPermition
     while time.time() - start_time < resettime:
         if stop_event.is_set():
             return
@@ -110,21 +119,25 @@ def timer_thread(stop_event,uartport,resettime):
     if uartport == 'uart2':
         if relay_uart2!='':
             relay_uart2.off()
+        CheckPermition = False
         #redLed_uart2.off()
         print("Relay deactivated")
     elif uartport =='uart1':
         if relay_uart1!='':
             relay_uart1.off()
+        CheckPermition = False
         #redLed_uart1.off()
         print("Relay deactivated")
     elif uartport =='uart3':
         if relay_uart3!='':
             relay_uart3.off()
+        CheckPermition = False
         #redLed_uart3.off()
         print("Relay deactivated")
     elif uartport =='uart4':
         if relay_uart4!='':
             relay_uart4.off()
+        CheckPermition = False
         #redLed_uart4.off()
         print("Relay deactivated")
     
@@ -174,10 +187,8 @@ def read_from_port(port,wiegand_uart):
                 allDoorname=[]
                 data = ''
                 #Get raspberry pi ip address
-                #ipadd = os.popen("ip -br add | grep eth0 | awk '{print $3}' | cut -d '/' -f1")
-                with open('controlip','r') as re:
-                    onlyipaddress = re.read().strip()
-                #onlyipaddress = ipadd.read().strip()
+                ipadd = os.popen("ip -br add | grep eth0 | awk '{print $3}' | cut -d '/' -f1")
+                onlyipaddress = ipadd.read().strip()
                 #get the uart define door name 
                 doorName = db.dbConnect("select door from doorsetting where wiegand = %s and control = %s" ,(wiegand_uart,onlyipaddress,),onlyipaddress)
                 #Check doorname not the empty
@@ -337,40 +348,130 @@ def read_from_port(port,wiegand_uart):
     finally:
         if ser.is_open:
             ser.close()
+def door_statue(uartport,controlip):
+    global reedswitch_check_change
+    reedswitch_noconvert = db.dbConnect("select door_sensor from doorsetting where wiegand = %s and control = %s", (uartport,controlip,), controlip)
+    if type(reedswitch_noconvert) is not type(None) and reedswitch_noconvert!='' and reedswitch_noconvert!=[]:
+        reedswitch_pin = int(reedswitch_noconvert[0][0])
+        reedswitch_check_change.append(reedswitch_pin)
+        reedswitch_uart_pin = gpiozero.Button(reedswitch_pin)
+        return reedswitch_uart_pin
+    else:
+        reedswitch_check_change.append(reedswitch_noconvert)
+        return ''
+    
+def getnewpin(uartport,controlip):
+    reedswitchpin_noconvert = db.dbConnect("select door_sensor from doorsetting where wiegand = %s and control = %s", (uartport,controlip,), controlip)
+    if type(reedswitchpin_noconvert) is not type(None) and reedswitchpin_noconvert!='' and reedswitchpin_noconvert!=[]:
+        return int(reedswitchpin_noconvert[0][0])
+    else:
+        return ''
+def update_reedswitch_pin(new_pin, uartport):
+    try:
+        global reedswitch_uart1
+        global reedswitch_uart2
+        global reedswitch_uart3
+        global reedswitch_uart4
+        if uartport == 'uart1':
+            with lock:
+                if reedswitch_uart1!='':
+                    reedswitch_uart1.close()  # Close the old relay object
+                reedswitch_uart1 = gpiozero.Button(new_pin)  # Initialize the new relay object
+        elif uartport == 'uart2':
+            with lock:
+                if reedswitch_uart2!='':
+                    reedswitch_uart2.close()  # Close the old relay object
+                reedswitch_uart2 = gpiozero.Button(new_pin)  # Initialize the new relay object
+            
+    except event as e:
+        print(f"gpio pin has error,please check error event:{event}")
 #check door status function
-def checkdoorstatus(input_sensor,uartport):
+def checkdoorstatus(input_sensor,uartport,controlip):
     global CheckPermition
+    global reedswitch_check_change
     # read status for input  
+    doorname = dbConnect("select door from doorsetting where wiegand = %s",(uartport,),controlip)[0][0]
+    if input_sensor.wait_for_press():
+        dbConnect_query("update door_status set doorstatus = %s where doorname = %s",('close',doorname),controlip)
+        print("Close door")
+        time.sleep(1)
+    if input_sensor.wait_for_release():
+        if CheckPermition:
+            print("open door")
+            dbConnect_query("update door_status set doorstatus = %s where doorname = %s",('open',doorname),controlip)
+            CheckPermition = False
+            time.sleep(1)
+        else:
+            dbConnect_query("update door_status set doorstatus = %s where doorname = %s",('Force Open',doorname),controlip)
+            print("Force Open")
+reedswitch_uart1 = door_statue('uart1',onlyipaddress)
+reedswitch_uart1_orignal = getnewpin('uart1',onlyipaddress)
+reedswitch_uart2 = door_statue('uart2',onlyipaddress)
+reedswitch_uart2_orignal = getnewpin('uart2',onlyipaddress)
+reedswitch_uart3 = door_statue('uart3',onlyipaddress)
+reedswitch_uart3_orignal = getnewpin('uart3',onlyipaddress)
+reedswitch_uart4 = door_statue('uart4',onlyipaddress)
+reedswitch_uart4_orignal = getnewpin('uart4',onlyipaddress)
+def checkdoorsensor(uartport):
+    #First Get reedswitch pin
+    ipadd = os.popen("ip -br add | grep eth0 | awk '{print $3}' | cut -d '/' -f1")
+    controlip = ipadd.read().strip()
+    #Get reedswitch pin
     while True:
-            if input_sensor.wait_for_press():
-                print("Close door")
-                time.sleep(1)
-            if input_sensor.wait_for_release():
-                if CheckPermition:
-                    print("open door")
-                    CheckPermition = False
-                    time.sleep(1)
-                else:
-                    print("Force Open")
+        global CheckPermition
+        global reedswitch_uart1_orignal
+        global reedswitch_uart2_orignal
+        global reedswitch_uart3_orignal
+        global reedswitch_uart4_orignal
+        reedswitch_uart1_pin_ischange = getnewpin(uartport,controlip)
+        reedswitch_uart2_pin_ischange = getnewpin(uartport,controlip)
+        reedswitch_uart3_pin_ischange = getnewpin(uartport,controlip)
+        reedswitch_uart4_pin_ischange = getnewpin(uartport,controlip)
+        #check now pin
+        if uartport == 'uart1':
+            if reedswitch_uart1_pin_ischange in reedswitch_check_change and reedswitch_uart1_pin_ischange!='':
+                checkdoorstatus(reedswitch_uart1,uartport,controlip)
+            else:
+                #change reedswitch port
+                reedswitch_check_change.remove(reedswitch_uart1_orignal)
+                reedswitch_uart1_orignal = reedswitch_uart1_pin_ischange
+                reedswitch_check_change.append(reedswitch_uart1_pin_ischange)
+                update_reedswitch_pin(reedswitch_uart1_pin_ischange,uartport)
+                checkdoorstatus(reedswitch_uart1,uartport,controlip)
+        elif uartport == 'uart2':
+            if reedswitch_uart1_pin_ischange in reedswitch_check_change and reedswitch_uart1_pin_ischange!='':
+                checkdoorstatus(reedswitch_uart2,uartport,controlip)
+            else:
+                #change reedswitch port
+                reedswitch_check_change.remove(reedswitch_uart2_orignal)
+                reedswitch_uart2_orignal = reedswitch_uart1_pin_ischange
+                reedswitch_check_change.append(reedswitch_uart1_pin_ischange)
+                print(reedswitch_check_change)
+                update_reedswitch_pin(reedswitch_uart1_pin_ischange,uartport)
+                checkdoorstatus(reedswitch_uart2,uartport,controlip)
 def main():
         #card reader to use uart port 1-4
+        global CheckPermition
         try:
             wiegand1 = threading.Thread(target=read_from_port, args=(uart1_dev,"uart1"))
             wiegand2 = threading.Thread(target=read_from_port, args=(uart2_dev,'uart2'))
             wiegand3 = threading.Thread(target=read_from_port, args=(uart3_dev,'uart3'))
             wiegand4 = threading.Thread(target=read_from_port, args=(uart4_dev,'uart4'))
             #Check door status is open or cloes
-            #t3 = threading.Thread(target=checkdoorstatus)
+            t1 = threading.Thread(target=checkdoorsensor,args=('uart1',))
+            t2 = threading.Thread(target=checkdoorsensor,args=('uart2',))
             wiegand1.start()
             wiegand2.start()
             wiegand3.start()
             wiegand4.start()
-            #t3.start()
+            t1.start()
+            t2.start()
             wiegand1.join()
             wiegand2.join()
             wiegand3.join()
             wiegand4.join()
-            #t3.join()
+            t1.join()
+            t2.join()
         except OSError as e:
             print(f"Door Read error please check errlog{e}")
 if __name__ == "__main__":
